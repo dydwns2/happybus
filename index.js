@@ -1,31 +1,71 @@
-const express = require('express')
-const app = express()
-const port = 3000
 
-app.get('/', (req, res) => {
-    res.send('Hello World')
-})
+var express = require('express');
+var app = express();
 
-app.get('/sound/:name', (req, res) => {
-    const { name } = req.params
+const { Sequelize, DataTypes } = require('sequelize');
+const sequelize = new Sequelize({ 
+    dialect: 'sqlite',
+    storage: 'database.sqlite'
+  });
 
-    if(name == "dog") {
-        res.json({'sound':'멍멍'})
-    } else if(name == "cat") {
-        res.json({'sound':'야옹'})
-    } else if(name == "pig") {
-        res.json({'sound':'꿀꿀'})
-    } else {
-        res.json({'sound':'알수없음'})
+const comments = sequelize.define('comments', {
+  // Model attributes are defined here
+  content: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+
+}, {
+  // Other model options go here
+});
+(async() => {
+await comments.sync();
+})();
+
+app.use(express.json()) // for parsing application/json
+app.use(express.urlencoded({ extended: true })) // for parsing application/x-www-form-urlencoded
+
+// set the view engine to ejs
+app.set('view engine', 'ejs');
+
+// use res.render to load up an ejs view file
+
+// index page
+app.get('/', async function(req, res) {
+    const comments = await comments .findAll();
+    res.render('index',{ comments: comments});
+});
+
+app.post('/create', async function(req, res) {
+    const { content } = req.body
+    await comments.create({content: content });
+    res.redirect('/')
+});
+
+app.post('/update/:id', async function(req, res) {
+  const { content } = req.body
+  const { id } = req.params
+  await comments.update({ content: content }, {
+    where: {
+      id: id
     }
+  });
 
-    console.log(name)
-})
+  res.redirect('/')
+});
 
-app.get('/cat', (req, res) => {
-    res.send({'sound': '야옹'})
-})
+app.post('/delete/:id', async function(req, res) {
+  const { id } = req.params
+  await comments.destroy({
+    where: {
+      idame: id
+    }
+  });
 
-app.listen(port, () => {
-    console.log('Example app listening on port ${port}')
-})
+  res.redirect('/')
+});
+
+
+
+app.listen(3000);
+console.log('Server is listening on port 3000');
